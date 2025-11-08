@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Mars Viewer</title>
+
+    <!-- Cesium library -->
+    <script src="https://cesium.com/downloads/cesiumjs/releases/1.123/Build/Cesium/Cesium.js"></script>
+    <link
+      href="https://cesium.com/downloads/cesiumjs/releases/1.123/Build/Cesium/Widgets/widgets.css"
+      rel="stylesheet"
+    />
+
+    <style>
+      html,
+      body,
+      #cesiumContainer {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        display: block;
+      }
+    </style>
+  </head>
+
+  <body>
+    <!-- The DOM container where Cesium will render the globe -->
+    <div id="cesiumContainer"></div>
+
+    <script>
+      // Create Cesium Viewer
+      const viewer = new Cesium.Viewer("cesiumContainer", {
+        imageryProvider: false,
+        baseLayerPicker: false,
+      });
+
+      // Swap in Mars shape instead of Earth
+      viewer.scene.globe.ellipsoid = new Cesium.Ellipsoid(
+        3396190.0, // Mars equatorial radius (m)
+        3396190.0,
+        3376200.0  // Mars polar radius (m)
+      );
+
+      // Load NASA Trek global color mosaic (WMS)
+      viewer.imageryLayers.addImageryProvider(
+        new Cesium.WebMapServiceImageryProvider({
+          url: "https://trek.nasa.gov/arcgis/services/TREKS/Mars_Global_Map/ImageServer/WMSServer",
+          layers: "0",           // main Mars Global Mosaic layer
+          parameters: {
+            service: "WMS",
+            request: "GetMap",
+            version: "1.3.0",
+            format: "image/jpeg",
+          },
+        })
+      );
+
+      // Simple camera start position (looking at Gale Crater)
+      viewer.camera.flyTo({
+        destination: Cesium.Cartesian3.fromDegrees(137.4, -4.6, 2_000_000),
+      });
+    </script>
+  </body>
+</html>
