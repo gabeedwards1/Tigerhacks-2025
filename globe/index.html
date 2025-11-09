@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Mars Rover Globe (better zoom & sizing)</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    html, body { margin:0; height:100%; background:#000; overflow:hidden; }
+    #info {
+      position:absolute; top:10px; left:10px;
+      color:#fff; font:12px/1.4 monospace;
+      background:rgba(0,0,0,0.6); padding:8px 12px; border-radius:8px;
+      white-space:pre;
+    }
+  </style>
+</head>
+<body>
+  <div id="info">Mars Rover Path (A*) — rotating globe
+Controls: drag = orbit, wheel = zoom, [g] = global, [l] = local
+Status: initializing…</div>
+
+  <!-- ES modules -->
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+    }
+  }
+  </script>
+
+  <script type="module">
+    import * as THREE from "three";
+    import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+
+    // ---------- UI ----------
+    const $info = document.getElementById('info');
+    const setStatus = (msg) => {
+      $info.textContent = $info.textContent.replace(/Status:.*/,'Status: ' + msg);
+      console.log('[STATUS]', msg);
+    };
+
+    // ---------- Scene ----------
+    const R = 5; // planet radius (visual units)
+
+    const renderer = new THREE.WebGLRenderer({ antialias:true });
+    renderer.setPixelRatio(Math.min(2, window.devicePixelRatio));
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    document.body.appendChild(renderer.domElement);
+
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x000000);
+
+    const camera = new THREE.PerspectiveCamera(45, window.innerWidth/window.innerHeight, 0.01, 2000);
+    camera.position.set(0, 0, 12);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
+
+    scene.add(new THREE.AmbientLight(0xffffff, 0.9));
+    const dl = new THREE.DirectionalLight(0xffffff, 1.1);
+    dl.position.set(5,5,5);
+    scene.add(dl);
+
+    const mars = new THREE.Mesh(
+      new THREE.SphereGeometry(R, 96, 64),
+      new THREE.MeshStandardMaterial({ color: 0x7a3d24, roughness: 1, metalness: 0 })
+    );
+    scene.add(mars);
+
+    // ---------- Helpers ----------
+    function wrap180(l){ let x = l; while (x>180) x-=360; while (x<-180) x+=360; return x; }
+
+    function lonLatToVec3(lonDeg, latDeg, radius = R + 0.03) {
+      // same convention used by many globe examples
+      const phi   = THREE.MathUtils.degToRad(90 - latDeg);
+      const theta = THREE.MathUtils.degToRad(lonDeg + 180);
+      const x = -radius * Math.sin(phi) * Math.cos(theta);
+      const z =  radius * Math.sin(phi) * Math.sin(theta);
+      const y =  radius * Math.cos(phi);
+      return new THREE.Vector3(x, y, z);
+    }
+
+    // Unwrap a sequence of longitudes so adjacent points never jump across ±180
+    function unwrapLons(seq) {
+      if (!seq.length) return seq;
+      const out = [seq[0]];
+      for (let i=1;i<seq.length;i++){
+        let prev = out[i-1], cur = seq[i], d = cur - prev;
+        if (d > 180) cur -= 360;
+        else if (d < -180) cur += 360;
+        out.push(cur);
+      }
+      return out;
+    }
+
+    // Safer local zoom: never closer than R+3, never farther than R+9
+    function centerAndZoomOnPoints(points3D) {
+      const box    = new THREE.Box3().setFromPoints(points3D);
+      const sphere = box.getBoundingSphere(new THREE.Sphere());
+      const center = sphere.center.clone();
+      const span   = Math.max(sphere.radius, 0.001);
+
+      controls.target.copy(center);
+
+      const MIN = R + 3.0;        // feel free to bump to 3.5 or 4.0 if still too close
+      const MAX = R + 9.0;
+      const dist = THREE.MathUtils.clamp(R + span * 4.0, MIN, MAX);
+
+      const dir = center.lengthSq() > 1e-9 ? center.clone().normalize() : new THREE.Vector3(0,0,1);
+      camera.position.copy(dir.multiplyScalar(dist));
+      camera.lookAt(center);
+      controls.update();
+
+      console.log(`[zoom] span=${span.toFixed(4)} → distance=${dist.toFixed(3)} (min=${MIN}, max=${MAX})`);
+    }
+
+    function zoomGlobal() {
+      controls.target.set(0,0,0);
+      camera.position.set(0, 0, R * 2.4);
+      camera.lookAt(0,0,0);
+      controls.update();
+    }
+
+    // ---------- Load & draw route ----------
+    let LAST_PTS = null; // keep for [l]ocal toggle
+
+    async function loadRoute() {
+      try {
+        const resp = await fetch("route_lonlat.json", { cache: "no-cache" });
+        if (!resp.ok) throw new Error("HTTP " + resp.status);
+        const data = await resp.json();
+        const arr  = Array.isArray(data) ? data : (data.positions || data.route || data.path || []);
+        if (!arr.length) { setStatus("Route JSON loaded (0 points)."); return; }
+
+        // Stats for sanity
+        let lons = arr.map(p=>p.lon);
+        const lats = arr.map(p=>p.lat);
+        const rawLonMin = Math.min(...lons), rawLonMax = Math.max(...lons);
+        const latMin = Math.min(...lats), latMax = Math.max(...lats);
+        console.log(`raw lon range: ${rawLonMin.toFixed(3)} → ${rawLonMax.toFixed(3)}`);
+        console.log(`lat range: ${latMin.toFixed(3)} → ${latMax.toFixed(3)}`);
+
+        // Unwrap longitudes for continuous curve
+        lons = unwrapLons(lons.slice());
+
+        // Convert to 3D
+        const pts = lons.map((lon,i) => lonLatToVec3(wrap180(lon), lats[i], R + 0.03));
+        LAST_PTS = pts;  // stash for [l]
+
+        // Adaptive, *thin* styling tied to planet radius
+        const box  = new THREE.Box3().setFromPoints(pts);
+        const span = Math.max(box.getBoundingSphere(new THREE.Sphere()).radius, 0.001);
+
+        // ↓ reduce the first multiplier from 0.35 → 0.08 (or 0.05 for even thinner)
+        const tubeRadius = THREE.MathUtils.clamp(span * 0.015, 0.005 * R, 0.03 * R);
+        const pinSize    = THREE.MathUtils.clamp(span * 0.40, 0.010 * R, 0.06 * R);
+        const pointSize  = THREE.MathUtils.clamp(span * 0.35, 0.008 * R, 0.04 * R);
+
+        // Path tube
+        const curve = new THREE.CatmullRomCurve3(pts, false, "centripetal", 0.2);
+        const segs  = Math.max(100, Math.min(5000, pts.length * 5));
+        const tube  = new THREE.TubeGeometry(curve, segs, tubeRadius, 12, false);
+        const line  = new THREE.Mesh(tube, new THREE.MeshBasicMaterial({ color: 0x00ffff }));
+        scene.add(line);
+
+
+        // Endpoints
+        const pinGeo = new THREE.SphereGeometry(pinSize, 20, 16);
+        const start = new THREE.Mesh(pinGeo, new THREE.MeshBasicMaterial({ color: 0x00ff00 }));
+        const end   = new THREE.Mesh(pinGeo, new THREE.MeshBasicMaterial({ color: 0xff0000 }));
+        start.position.copy(pts[0]); end.position.copy(pts.at(-1));
+        scene.add(start, end);
+
+        // Optional scatter to judge coverage
+        const buf = new Float32Array(pts.length * 3);
+        pts.forEach((p,i)=>{ buf[3*i]=p.x; buf[3*i+1]=p.y; buf[3*i+2]=p.z; });
+        const ptsGeo = new THREE.BufferGeometry();
+        ptsGeo.setAttribute('position', new THREE.BufferAttribute(buf, 3));
+        const dots = new THREE.Points(ptsGeo, new THREE.PointsMaterial({ size: pointSize, color: 0xffffff }));
+        scene.add(dots);
+
+        centerAndZoomOnPoints(pts);
+        setStatus(`Route loaded (${pts.length} points).`);
+      } catch (e) {
+        console.error("Error loading route_lonlat.json:", e);
+        setStatus("Could not load route JSON (see console).");
+      }
+    }
+
+    loadRoute();
+
+    // ---------- Animate ----------
+    function animate(){
+      requestAnimationFrame(animate);
+      mars.rotation.y += 0.0008;
+      controls.update();
+      renderer.render(scene, camera);
+    }
+    animate();
+
+    // ---------- Resize ----------
+    window.addEventListener("resize", () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    // ---------- Keyboard toggles ----------
+    window.addEventListener('keydown', (e) => {
+      const k = e.key.toLowerCase();
+      if (k === 'g') {
+        zoomGlobal();
+        console.log('[view] global');
+      } else if (k === 'l' && LAST_PTS && LAST_PTS.length) {
+        centerAndZoomOnPoints(LAST_PTS);
+        console.log('[view] local');
+      }
+    });
+
+    setStatus("Running. If you see only black, open console for logs.");
+  </script>
+</body>
+</html>
