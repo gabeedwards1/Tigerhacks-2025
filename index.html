@@ -29,10 +29,13 @@
     const { TITILER_URL, FLASK_URL, MARS_TIF } = window.__ENV__;
     const tileUrl = `${TITILER_URL}/cog/tiles/WorldCRS84Quad/{z}/{x}/{y}@1x?url=${FLASK_URL}/${MARS_TIF}`;
 
-    const viewer = new Cesium.Viewer("cesiumContainer", {
-      imageryProvider: false,
-      baseLayerPicker: false,
-    });
+  const viewer = new Cesium.Viewer("cesiumContainer", {
+    imageryProvider: false,
+    baseLayerPicker: false,
+    animation: false,
+    timeline: false,
+    creditContainer: document.createElement('div'),
+  });
 
     viewer.scene.globe.ellipsoid = new Cesium.Ellipsoid(
       3396190.0,
