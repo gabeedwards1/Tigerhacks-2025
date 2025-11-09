@@ -166,6 +166,57 @@
               coordLabel.textContent = "Off planet";
             }
           }, Cesium.ScreenSpaceEventType.MOUSE_MOVE);
+
+           // Auto-rotation and zoom out after idle time
+    let idleTimeout;
+    let isRotating = false;
+    let hasZoomedOut = false;
+    const IDLE_TIME = 3000; // 3 seconds of idle time before zoom and rotation starts
+    const ROTATION_SPEED = 0.001; // Rotation speed
+
+    function startRotation() {
+      if (!isRotating) {
+        isRotating = true;
+        
+        // Zoom out if we haven't already
+        if (!hasZoomedOut) {
+          hasZoomedOut = true;
+          viewer.camera.flyTo({
+            destination: Cesium.Cartesian3.fromDegrees(-133.3, 18.4, 15_000_000),
+            duration: 3, // 3 seconds to zoom out
+          });
+        }
+        
+        viewer.clock.onTick.addEventListener(rotateCamera);
+      }
+    }
+
+    function stopRotation() {
+      if (isRotating) {
+        isRotating = false;
+        hasZoomedOut = false;
+        viewer.clock.onTick.removeEventListener(rotateCamera);
+      }
+    }
+
+    function rotateCamera() {
+      const camera = viewer.camera;
+      camera.rotate(Cesium.Cartesian3.UNIT_Z, ROTATION_SPEED);
+    }
+
+    function resetIdleTimer() {
+      stopRotation();
+      clearTimeout(idleTimeout);
+      idleTimeout = setTimeout(startRotation, IDLE_TIME);
+    }
+
+    // Stop rotation and reset timer on any user interaction
+    viewer.scene.canvas.addEventListener('mousedown', resetIdleTimer);
+    viewer.scene.canvas.addEventListener('wheel', resetIdleTimer);
+    viewer.scene.canvas.addEventListener('touchstart', resetIdleTimer);
+
+    // Start the initial idle timer
+    resetIdleTimer();
         </script>
     </body>
 </html>
