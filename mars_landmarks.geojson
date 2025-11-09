@@ -1,0 +1,27 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    { "type": "Feature", "properties": { "name": "Olympus Mons" }, "geometry": { "type": "Point", "coordinates": [-133.8, 18.65] } },
+    { "type": "Feature", "properties": { "name": "Valles Marineris" }, "geometry": { "type": "Point", "coordinates": [-59.2, -14.6] } },
+    { "type": "Feature", "properties": { "name": "Gale Crater" }, "geometry": { "type": "Point", "coordinates": [137.4, -4.59] } },
+    { "type": "Feature", "properties": { "name": "Elysium Mons" }, "geometry": { "type": "Point", "coordinates": [147.21, 25.02] } },
+    { "type": "Feature", "properties": { "name": "Hellas Planitia" }, "geometry": { "type": "Point", "coordinates": [70.0, -42.68] } },
+    { "type": "Feature", "properties": { "name": "Isidis Planitia" }, "geometry": { "type": "Point", "coordinates": [87.0, 12.9] } },
+    { "type": "Feature", "properties": { "name": "Syrtis Major Planum" }, "geometry": { "type": "Point", "coordinates": [69.5, 10.0] } },
+    { "type": "Feature", "properties": { "name": "Arsia Mons" }, "geometry": { "type": "Point", "coordinates": [-120.7, -8.35] } },
+    { "type": "Feature", "properties": { "name": "Ascraeus Mons" }, "geometry": { "type": "Point", "coordinates": [-104.5, 11.9] } },
+    { "type": "Feature", "properties": { "name": "Pavonis Mons" }, "geometry": { "type": "Point", "coordinates": [-113.0, 0.8] } },
+    { "type": "Feature", "properties": { "name": "Noctis Labyrinthus" }, "geometry": { "type": "Point", "coordinates": [-103.0, -7.0] } },
+    { "type": "Feature", "properties": { "name": "Utopia Planitia" }, "geometry": { "type": "Point", "coordinates": [118.0, 47.0] } },
+    { "type": "Feature", "properties": { "name": "Terra Sabaea" }, "geometry": { "type": "Point", "coordinates": [40.0, -10.0] } },
+    { "type": "Feature", "properties": { "name": "Arabia Terra" }, "geometry": { "type": "Point", "coordinates": [-20.0, 20.0] } },
+    { "type": "Feature", "properties": { "name": "Acidalia Planitia" }, "geometry": { "type": "Point", "coordinates": [-9.0, 56.7] } },
+    { "type": "Feature", "properties": { "name": "Tempe Terra" }, "geometry": { "type": "Point", "coordinates": [-75.0, 40.0] } },
+    { "type": "Feature", "properties": { "name": "Argyre Planitia" }, "geometry": { "type": "Point", "coordinates": [-44.0, -49.0] } },
+    { "type": "Feature", "properties": { "name": "Tharsis Tholus" }, "geometry": { "type": "Point", "coordinates": [-91.8, 13.5] } },
+    { "type": "Feature", "properties": { "name": "Promethei Terra" }, "geometry": { "type": "Point", "coordinates": [115.0, -60.0] } },
+    { "type": "Feature", "properties": { "name": "Cydonia Mensae" }, "geometry": { "type": "Point", "coordinates": [0.3, 45.8] } },
+    { "type": "Feature", "properties": { "name": "Planum Boreum (North Pole)" }, "geometry": { "type": "Point", "coordinates": [0.0, 90.0] } },
+    { "type": "Feature", "properties": { "name": "Planum Australe (South Pole)" }, "geometry": { "type": "Point", "coordinates": [0.0, -90.0] } }
+  ]
+}
